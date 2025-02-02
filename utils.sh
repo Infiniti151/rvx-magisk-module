@@ -8,7 +8,6 @@ BUILD_DIR="build"
 
 if [ "${GITHUB_TOKEN-}" ]; then GH_HEADER="Authorization: token ${GITHUB_TOKEN}"; else GH_HEADER=; fi
 NEXT_VER_CODE=${NEXT_VER_CODE:-$(date +'%Y%m%d')}
-OS=$(uname -o)
 
 toml_prep() {
 	if [ ! -f "$1" ]; then return 1; fi
@@ -122,16 +121,8 @@ get_rv_prebuilts() {
 
 set_prebuilts() {
 	APKSIGNER="${BIN_DIR}/apksigner.jar"
-	if [ "$OS" = Android ]; then
-		local arch
-		if [ "$(uname -m)" = aarch64 ]; then arch=arm64; else arch=arm; fi
-		HTMLQ="${BIN_DIR}/htmlq/htmlq-${arch}"
-		AAPT2="${BIN_DIR}/aapt2/aapt2-${arch}"
-		TOML="${BIN_DIR}/toml/tq-${arch}"
-	else
-		HTMLQ="${BIN_DIR}/htmlq/htmlq-x86_64"
-		TOML="${BIN_DIR}/toml/tq-x86_64"
-	fi
+	HTMLQ="${BIN_DIR}/htmlq/htmlq-x86_64"
+	TOML="${BIN_DIR}/toml/tq-x86_64"
 }
 
 config_update() {
@@ -288,9 +279,7 @@ merge_splits() {
 apk_mirror_search() {
 	local resp="$1" dpi="$2" arch="$3" apk_bundle="$4"
 	local apparch dlurl node app_table
-	if [ "$arch" = all ]; then
-		apparch=(universal noarch 'arm64-v8a + armeabi-v7a')
-	else apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a'); fi
+	apparch=("$arch" universal noarch 'arm64-v8a + armeabi-v7a')
 	for ((n = 1; n < 40; n++)); do
 		node=$($HTMLQ "div.table-row.headerFont:nth-last-child($n)" -r "span:nth-child(n+3)" <<<"$resp")
 		if [ -z "$node" ]; then break; fi
@@ -309,7 +298,6 @@ dl_apkmirror() {
 	if [ -f "${output}.apkm" ]; then
 		is_bundle=true
 	else
-		if [ "$arch" = "arm-v7a" ]; then arch="armeabi-v7a"; fi
 		local resp node app_table dlurl=""
 		url="${url}/${url##*/}-${version//./-}-release/"
 		resp=$(req "$url" -) || return 1
@@ -364,7 +352,6 @@ get_uptodown_resp() {
 get_uptodown_vers() { $HTMLQ --text ".version" <<<"$__UPTODOWN_RESP__"; }
 dl_uptodown() {
 	local uptodown_dlurl=$1 version=$2 output=$3 arch=$4 _dpi=$5
-	if [ "$arch" = "arm-v7a" ]; then arch="armeabi-v7a"; fi
 	local op resp data_code
 	data_code=$($HTMLQ "#detail-app-name" --attribute data-code <<<"$__UPTODOWN_RESP__")
 	local versionURL=""
@@ -377,19 +364,17 @@ dl_uptodown() {
 	done
 	if [ -z "$versionURL" ]; then return 1; fi
 	resp=$(req "$versionURL" -) || return 1
-	if [ "$arch" != all ]; then
-		local data_version files node_arch data_file_id
-		data_version=$($HTMLQ '.button.variants' --attribute data-version <<<"$resp") || return 1
-		files=$(req "${uptodown_dlurl%/*}/app/${data_code}/version/${data_version}/files" - | jq -e -r .content) || return 1
-		for ((n = 1; n < 12; n += 2)); do
-			node_arch=$($HTMLQ ".content > p:nth-child($n)" --text <<<"$files" | xargs) || return 1
-			if [ -z "$node_arch" ]; then return 1; fi
-			if [ "$node_arch" != "$arch" ]; then continue; fi
-			data_file_id=$($HTMLQ "div.variant:nth-child($((n + 1))) > .v-report" --attribute data-file-id <<<"$files") || return 1
-			resp=$(req "${uptodown_dlurl}/download/${data_file_id}" -)
-			break
-		done
-	fi
+	local data_version files node_arch data_file_id
+	data_version=$($HTMLQ '.button.variants' --attribute data-version <<<"$resp") || return 1
+	files=$(req "${uptodown_dlurl%/*}/app/${data_code}/version/${data_version}/files" - | jq -e -r .content) || return 1
+	for ((n = 1; n < 12; n += 2)); do
+		node_arch=$($HTMLQ ".content > p:nth-child($n)" --text <<<"$files" | xargs) || return 1
+		if [ -z "$node_arch" ]; then return 1; fi
+		if [ "$node_arch" != "$arch" ]; then continue; fi
+		data_file_id=$($HTMLQ "div.variant:nth-child($((n + 1))) > .v-report" --attribute data-file-id <<<"$files") || return 1
+		resp=$(req "${uptodown_dlurl}/download/${data_file_id}" -)
+		break
+	done
 	local data_url
 	data_url=$($HTMLQ "#detail-download-button" --attribute data-url <<<"$resp") || return 1
 	req "https://dw.uptodown.com/dwn/${data_url}" "$output"
@@ -409,7 +394,7 @@ get_archive_resp() {
 	if [ -z "$r" ]; then return 1; else __ARCHIVE_RESP__=$(sed -n 's;^<a href="\(.*\)"[^"]*;\1;p' <<<"$r"); fi
 	__ARCHIVE_PKG_NAME__=$(awk -F/ '{print $NF}' <<<"$1")
 }
-get_archive_vers() { sed 's/^[^-]*-//;s/-\(all\|arm64-v8a\|arm-v7a\)\.apk//g' <<<"$__ARCHIVE_RESP__"; }
+get_archive_vers() { sed 's/^[^-]*-//;s/-arm64-v8a\.apk//g' <<<"$__ARCHIVE_RESP__"; }
 get_archive_pkg_name() { echo "$__ARCHIVE_PKG_NAME__"; }
 # --------------------------------------------------
 
@@ -417,7 +402,6 @@ patch_apk() {
 	local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4 rv_patches_jar=$5
 	local cmd="env -u GITHUB_REPOSITORY java -jar $rv_cli_jar patch $stock_input --purge -o $patched_apk -p $rv_patches_jar --keystore=ks.keystore \
 --keystore-entry-password=123456789 --keystore-password=123456789 --signer=jhc --keystore-entry-alias=jhc $patcher_args"
-	if [ "$OS" = Android ]; then cmd+=" --custom-aapt2-binary=${AAPT2}"; fi
 	pr "$cmd"
 	if eval "$cmd"; then [ -f "$patched_apk" ]; else
 		rm "$patched_apk" 2>/dev/null || :
@@ -443,8 +427,6 @@ build_rv() {
 	app_name_l=${app_name_l// /-}
 	local table=${args[table]}
 	local dl_from=${args[dl_from]}
-	local arch=${args[arch]}
-	local arch_f="${arch// /}"
 
 	local p_patcher_args=()
 	if [ "${args[excluded_patches]}" ]; then p_patcher_args+=("$(join_args "${args[excluded_patches]}" -d)"); fi
@@ -504,7 +486,7 @@ build_rv() {
 	pr "Choosing version '${version}' for ${table}"
 	local version_f=${version// /}
 	version_f=${version_f#v}
-	local stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}-${arch_f}.apk"
+	local stock_apk="${TEMP_DIR}/${pkg_name}-${version_f}.apk"
 	if [ ! -f "$stock_apk" ]; then
 		for dl_p in archive apkmirror uptodown; do
 			if [ -z "${args[${dl_p}_dlurl]}" ]; then continue; fi
@@ -531,47 +513,25 @@ build_rv() {
 	fi
 
 	local patcher_args patched_apk build_mode
-	local rv_brand_f=${args[rv_brand],,}
-	rv_brand_f=${rv_brand_f// /-}
+	local rv_brand_f=${args[rv_brand]}
 	if [ "${args[patcher_args]}" ]; then p_patcher_args+=("${args[patcher_args]}"); fi
 	for build_mode in "${build_mode_arr[@]}"; do
 		patcher_args=("${p_patcher_args[@]}")
 		pr "Building '${table}' in '$build_mode' mode"
 		if [ -n "$microg_patch" ]; then
-			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}-${build_mode}.apk"
+			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${build_mode}.apk"
+			patcher_args+=("-d \"${microg_patch}\"")
 		else
-			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}-${arch_f}.apk"
-		fi
-		if [ -n "$microg_patch" ]; then
-			if [ "$build_mode" = apk ]; then
-				patcher_args+=("-e \"${microg_patch}\"")
-			elif [ "$build_mode" = module ]; then
-				patcher_args+=("-d \"${microg_patch}\"")
-			fi
+			patched_apk="${TEMP_DIR}/${app_name_l}-${rv_brand_f}-${version_f}.apk"
 		fi
 		if [ "${args[riplib]}" = true ]; then
-			patcher_args+=("--rip-lib x86_64 --rip-lib x86")
-			if [ "$build_mode" = module ]; then
-				patcher_args+=("--rip-lib arm64-v8a --rip-lib armeabi-v7a --unsigned")
-			else
-				if [ "$arch" = "arm64-v8a" ]; then
-					patcher_args+=("--rip-lib armeabi-v7a")
-				elif [ "$arch" = "arm-v7a" ]; then
-					patcher_args+=("--rip-lib arm64-v8a")
-				fi
-			fi
+			patcher_args+=("--rip-lib x86_64 --rip-lib x86 --rip-lib arm64-v8a --unsigned")
 		fi
 		if [ "${NORB:-}" != true ] || [ ! -f "$patched_apk" ]; then
 			if ! patch_apk "$stock_apk" "$patched_apk" "${patcher_args[*]}" "${args[cli]}" "${args[ptjar]}"; then
 				epr "Building '${table}' failed!"
 				return 0
 			fi
-		fi
-		if [ "$build_mode" = apk ]; then
-			local apk_output="${BUILD_DIR}/${app_name_l}-${rv_brand_f}-v${version_f}-${arch_f}.apk"
-			mv -f "$patched_apk" "$apk_output"
-			pr "Built ${table} (non-root): '${apk_output}'"
-			continue
 		fi
 		local base_template
 		base_template=$(mktemp -d -p "$TEMP_DIR")
@@ -589,7 +549,7 @@ build_rv() {
 			"https://raw.githubusercontent.com/${GITHUB_REPOSITORY-}/update/${upj}" \
 			"$base_template"
 
-		local module_output="${app_name_l}-${rv_brand_f}-magisk-v${version_f}-${arch_f}.zip"
+		local module_output="${app_name_l}-${rv_brand_f}-v${version_f}-p${rv_patches_ver%%.rvp}.zip"
 		pr "Packing module ${table}"
 		cp -f "$patched_apk" "${base_template}/base.apk"
 		if [ "${args[include_stock]}" = true ]; then cp -f "$stock_apk" "${base_template}/${pkg_name}.apk"; fi
@@ -604,12 +564,7 @@ list_args() { tr -d '\t\r' <<<"$1" | tr -s ' ' | sed 's/" "/"\n"/g' | sed 's/\([
 join_args() { list_args "$1" | sed "s/^/${2} /" | paste -sd " " - || :; }
 
 module_config() {
-	local ma=""
-	if [ "$4" = "arm64-v8a" ]; then
-		ma="arm64"
-	elif [ "$4" = "arm-v7a" ]; then
-		ma="arm"
-	fi
+	local ma="arm64"
 	echo "PKG_NAME=$2
 PKG_VER=$3
 MODULE_ARCH=$ma" >"$1/config"

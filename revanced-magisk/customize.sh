@@ -6,15 +6,7 @@ if [ -n "$MODULE_ARCH" ] && [ "$MODULE_ARCH" != "$ARCH" ]; then
 Your device: $ARCH
 Module: $MODULE_ARCH"
 fi
-if [ "$ARCH" = "arm" ]; then
-	ARCH_LIB=armeabi-v7a
-elif [ "$ARCH" = "arm64" ]; then
-	ARCH_LIB=arm64-v8a
-elif [ "$ARCH" = "x86" ]; then
-	ARCH_LIB=x86
-elif [ "$ARCH" = "x64" ]; then
-	ARCH_LIB=x86_64
-else abort "ERROR: unreachable: ${ARCH}"; fi
+ARCH_LIB=arm64-v8a
 RVPATH=/data/adb/rvhc/${MODPATH##*/}.apk
 
 set_perm_recursive "$MODPATH/bin" 0 0 0755 0777
@@ -166,11 +158,5 @@ nohup cmd package compile --reset "$PKG_NAME" >/dev/null 2>&1 &
 ui_print "* Cleanup"
 rm -rf "${MODPATH:?}/bin" "$MODPATH/$PKG_NAME.apk"
 
-if [ "$KSU" ] && [ -d "/data/adb/modules/zygisk-assistant" ]; then
-	ui_print "* If you are using zygisk-assistant, you need to"
-	ui_print "  give root permissions to $PKG_NAME"
-fi
-
 ui_print "* Done"
-ui_print "  by j-hc (github.com/j-hc)"
 ui_print " "

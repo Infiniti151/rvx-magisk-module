@@ -51,11 +51,8 @@ if [ "$(echo "$TEMP_DIR"/*-rv/changelog.md)" ]; then
 	: >"$TEMP_DIR"/*-rv/changelog.md || :
 fi
 
-mkdir -p ${MODULE_TEMPLATE_DIR}/bin/arm64 ${MODULE_TEMPLATE_DIR}/bin/arm ${MODULE_TEMPLATE_DIR}/bin/x86 ${MODULE_TEMPLATE_DIR}/bin/x64
+mkdir -p ${MODULE_TEMPLATE_DIR}/bin/arm64
 gh_dl "${MODULE_TEMPLATE_DIR}/bin/arm64/cmpr" "https://github.com/j-hc/cmpr/releases/latest/download/cmpr-arm64-v8a"
-gh_dl "${MODULE_TEMPLATE_DIR}/bin/arm/cmpr" "https://github.com/j-hc/cmpr/releases/latest/download/cmpr-armeabi-v7a"
-gh_dl "${MODULE_TEMPLATE_DIR}/bin/x86/cmpr" "https://github.com/j-hc/cmpr/releases/latest/download/cmpr-x86"
-gh_dl "${MODULE_TEMPLATE_DIR}/bin/x64/cmpr" "https://github.com/j-hc/cmpr/releases/latest/download/cmpr-x86_64"
 
 declare -A cliriplib
 idx=0
@@ -123,10 +120,7 @@ for table_name in $(toml_get_table_names); do
 		app_args[dl_from]=archive
 	} || app_args[archive_dlurl]=""
 	if [ -z "${app_args[dl_from]-}" ]; then abort "ERROR: no 'apkmirror_dlurl', 'uptodown_dlurl' or 'archive_dlurl' option was set for '$table_name'."; fi
-	app_args[arch]=$(toml_get "$t" arch) || app_args[arch]="all"
-	if [ "${app_args[arch]}" != "both" ] && [ "${app_args[arch]}" != "all" ] && [[ ${app_args[arch]} != "arm64-v8a"* ]] && [[ ${app_args[arch]} != "arm-v7a"* ]]; then
-		abort "wrong arch '${app_args[arch]}' for '$table_name'"
-	fi
+	app_args[arch]=$(toml_get "$t" arch)
 
 	app_args[include_stock]=$(toml_get "$t" include-stock) || app_args[include_stock]=true && vtf "${app_args[include_stock]}" "include-stock"
 	app_args[dpi]=$(toml_get "$t" apkmirror-dpi) || app_args[dpi]="nodpi"
@@ -134,40 +128,15 @@ for table_name in $(toml_get_table_names); do
 	table_name_f=${table_name_f// /-}
 	app_args[module_prop_name]=$(toml_get "$t" module-prop-name) || {
 		app_args[module_prop_name]="${table_name_f}-jhc"
-		if [ "${app_args[arch]}" = "arm64-v8a" ]; then
-			app_args[module_prop_name]="${app_args[module_prop_name]}-arm64"
-		elif [ "${app_args[arch]}" = "arm-v7a" ]; then
-			app_args[module_prop_name]="${app_args[module_prop_name]}-arm"
-		fi
-	}
-
-	if [ "${app_args[arch]}" = both ]; then
-		app_args[table]="$table_name (arm64-v8a)"
-		app_args[arch]="arm64-v8a"
 		app_args[module_prop_name]="${app_args[module_prop_name]}-arm64"
-		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
-		app_args[table]="$table_name (arm-v7a)"
-		app_args[arch]="arm-v7a"
-		app_args[module_prop_name]="${app_args[module_prop_name]}-arm"
-		if ((idx >= PARALLEL_JOBS)); then
-			wait -n
-			idx=$((idx - 1))
-		fi
-		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
-	else
-		idx=$((idx + 1))
-		build_rv "$(declare -p app_args)" &
-	fi
+	}
+	idx=$((idx + 1))
+	build_rv "$(declare -p app_args)" &
 done
 wait
 rm -rf temp/tmp.*
 if [ -z "$(ls -A1 "${BUILD_DIR}")" ]; then abort "All builds failed."; fi
 
-log "\nInstall [Microg](https://github.com/ReVanced/GmsCore/releases) for non-root YouTube and YT Music APKs"
-log "Use [zygisk-detach](https://github.com/j-hc/zygisk-detach) to detach root ReVanced YouTube and YT Music from Play Store"
-log "\n[revanced-magisk-module](https://github.com/j-hc/revanced-magisk-module)\n"
 log "$(cat "$TEMP_DIR"/*-rv/changelog.md)"
 
 SKIPPED=$(cat "$TEMP_DIR"/skipped 2>/dev/null || :)
