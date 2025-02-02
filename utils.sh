@@ -427,6 +427,7 @@ build_rv() {
 	app_name_l=${app_name_l// /-}
 	local table=${args[table]}
 	local dl_from=${args[dl_from]}
+	local arch=${args[arch]}
 
 	local p_patcher_args=()
 	if [ "${args[excluded_patches]}" ]; then p_patcher_args+=("$(join_args "${args[excluded_patches]}" -d)"); fi
