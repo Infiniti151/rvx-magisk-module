@@ -4,9 +4,10 @@
 
 Builds [RVX](https://github.com/inotia00/revanced-patches) (ReVanced Extended)
 
-# Requirements
-Magisk: 20.4+
-Android: 8.0+
-Arch: arm64
+## Requirements
+
+Magisk: <b>20.4+</b>  
+Android: <b>8.0+</b>  
+Arch: <b>arm64</b>  
 
 ![RVX](RVX.png)
