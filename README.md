@@ -9,6 +9,6 @@ Builds [RVX](https://github.com/inotia00/revanced-patches) (ReVanced Extended)  
 
 :gear:	Magisk: <b>20.4+</b>  
 :iphone: Android: <b>8.0+</b>  
-:hammer_and_pick:	 Arch: <b>arm64</b>  
+:hammer_and_pick: Arch: <b>arm64</b>  
 
 ![RVX](RVX.png)
