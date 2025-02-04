@@ -2,7 +2,7 @@
 MODDIR=${0%/*}
 RVPATH=/data/adb/rvhc/${MODDIR##*/}.apk
 . "$MODDIR/config"
-. "$MODPATH/common.sh"
+. "$MODDIR/common.sh"
 
 err() {
 	[ ! -f "$MODDIR/err" ] && cp "$MODDIR/module.prop" "$MODDIR/err"
