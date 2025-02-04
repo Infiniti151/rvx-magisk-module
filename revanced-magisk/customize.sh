@@ -2,11 +2,6 @@
 . "$MODPATH/common.sh"
 
 ui_print ""
-if [ -n "$MODULE_ARCH" ] && [ "$MODULE_ARCH" != "$ARCH" ]; then
-	abort "ERROR: Wrong arch
-Your device: $ARCH
-Module: $MODULE_ARCH"
-fi
 ARCH_LIB=arm64-v8a
 RVPATH=/data/adb/rvhc/${MODPATH##*/}.apk
 
