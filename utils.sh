@@ -123,6 +123,7 @@ set_prebuilts() {
 	APKSIGNER="${BIN_DIR}/apksigner.jar"
 	HTMLQ="${BIN_DIR}/htmlq-x86_64"
 	TOML="${BIN_DIR}/tq-x86_64"
+	AAPT2="${BIN_DIR}/aapt2"
 }
 
 config_update() {
@@ -409,6 +410,7 @@ get_archive_pkg_name() { echo "$__ARCHIVE_PKG_NAME__"; }
 
 patch_apk() {
 	local stock_input=$1 patched_apk=$2 patcher_args=$3 rv_cli_jar=$4 rv_patches_jar=$5
+	$AAPT2 dump badging $stock_input | grep "versionName" | sed "s/.*versionName='//;s/' .*//" > yt-version.txt
 	local cmd="env -u GITHUB_REPOSITORY java -jar $rv_cli_jar patch $stock_input --purge -o $patched_apk -p $rv_patches_jar --keystore=ks.keystore \
 --keystore-entry-password=123456789 --keystore-password=123456789 --signer=jhc --keystore-entry-alias=jhc $patcher_args"
 	pr "$cmd"
