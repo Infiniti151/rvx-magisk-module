@@ -1,6 +1,6 @@
 {
-  "version": "v19.44.39 (patches: 5.3.1)",
-  "versionCode": 1,
-  "zipUrl": "https://github.com/Infiniti151/rvx-magisk-module/releases/download/1/youtube-RVX-v19.44.39-p5.3.1.zip",
+  "version": "v19.44.39 (patches: 5.4.1)",
+  "versionCode": 2,
+  "zipUrl": "https://github.com/Infiniti151/rvx-magisk-module/releases/download/2/youtube-rvx-v19.44.39-p5.4.1.zip",
   "changelog": "https://raw.githubusercontent.com/Infiniti151/rvx-magisk-module/update/build.md"
 }
